@@ -1,9 +1,7 @@
-/* 
- * tsh - A tiny shell program with job control
+ /*
+ *tsh - A tiny shell program with job control	
  *
- *	201402420 전형진
- *
- * <Put your name and login ID here>
+ * <201402420 전형진>
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -170,11 +168,20 @@ int main(int argc, char **argv)
  */
 void eval(char *cmdline) 
 {
+	char *argv[MAXARGS];
+	parseline(cmdline,argv);
+	builtin_cmd(argv);
+
 	return;
 }
 
 int builtin_cmd(char **argv)
 {
+	char *cmd = argv[0];
+
+	if(!strcmp(cmd, "quit")){
+		exit(0);
+	}
 	return 0;
 }
 
