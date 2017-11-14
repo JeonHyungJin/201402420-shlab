@@ -168,18 +168,27 @@ int main(int argc, char **argv)
  */
 void eval(char *cmdline) 
 {
-	char *argv[MAXARGS];
+	char *argv[MAXARGS];		//command 저장	
 	pid_t pid;
+	int bg;
 
-	parseline(cmdline,argv);
+	bg = parseline(cmdline, argv);	//명령어 분리
 	
 	if(!builtin_cmd(argv)){
-		if((pid=fork())==0){
+		if((pid=fork())==0){	//child process 인 경우 execve()실행
 			if((execve(argv[0],argv,environ)<0)){
-				printf("%s : Command not found\n", argv);
+				printf("%s : Command not found\n", argv[0]);
 				exit(0);
 			}
 		}
+	}
+	if(!bg){
+		int status;
+		if(waitpid(pid, &status, 0)<0)
+			unix_error("waitfg : waitpid error");
+	}else{
+		addjob(jobs,pid,BG,cmdline);
+		printf("(%d) (%d) %s", pid2jid(pid), pid, cmdline);
 	}
 
 	return;
@@ -189,7 +198,7 @@ int builtin_cmd(char **argv)
 {
 	char *cmd = argv[0];
 
-	if(!strcmp(cmd, "quit")){
+	if(!strcmp(cmd, "quit")){	 //quit command
 		exit(0);
 	}
 	return 0;
