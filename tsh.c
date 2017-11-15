@@ -169,6 +169,7 @@ int main(int argc, char **argv)
 void eval(char *cmdline) 
 {
 	char *argv[MAXARGS];		//command 저장	
+	char buf[MAXLINE];
 	pid_t pid;
 	int bg;
 
@@ -181,7 +182,8 @@ void eval(char *cmdline)
 				exit(0);
 			}
 		}
-	}
+	
+
 	if(!bg){
 		int status;
 		if(waitpid(pid, &status, 0)<0)
@@ -190,7 +192,7 @@ void eval(char *cmdline)
 		addjob(jobs,pid,BG,cmdline);
 		printf("(%d) (%d) %s", pid2jid(pid), pid, cmdline);
 	}
-
+	}
 	return;
 }
 
@@ -200,6 +202,10 @@ int builtin_cmd(char **argv)
 
 	if(!strcmp(cmd, "quit")){	 //quit command
 		exit(0);
+	}
+	if(!strcmp(cmd,"jobs")){	//jobs command
+		listjobs(jobs,STDOUT_FILENO);
+		return 1;
 	}
 	return 0;
 }
