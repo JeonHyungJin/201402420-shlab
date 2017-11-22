@@ -170,13 +170,20 @@ void eval(char *cmdline)
 {
 	char *argv[MAXARGS];		//command 저장	
 	char buf[MAXLINE];
-	pid_t pid;
-	int bg;
+	pid_t pid;	//프로세스 ID
+	int bg;	//BG인지 확인하는 변수
 
 	bg = parseline(cmdline, argv);	//명령어 분리
-	
+	sigset_t mask;	//시그널의 집합
+
+	sigemptyset(&mask);	//시그널의 집합 생성
+	sigaddset(&mask,SIGINT);
+	sigaddset(&mask,SIGCHLD);
+	sigprocmask(SIG_BLOCK,&mask,NULL);
+
 	if(!builtin_cmd(argv)){
 		if((pid=fork())==0){	//child process 인 경우 execve()실행
+			sigprocmask(SIG_UNBLOCK,&mask,NULL);
 			if((execve(argv[0],argv,environ)<0)){
 				printf("%s : Command not found\n", argv[0]);
 				exit(0);
@@ -186,12 +193,16 @@ void eval(char *cmdline)
 
 	if(!bg){
 		int status;
-		if(waitpid(pid, &status, 0)<0)
-			unix_error("waitfg : waitpid error");
+		addjob(jobs,pid,FG,cmdline);	//작업리스트 추가
+		sigprocmask(SIG_UNBLOCK,&mask,NULL);
+		waitfg(pid,1);	//실행되는 job기다림
+	//	if(waitpid(pid, &status, 0)<0)
+	//		unix_error("waitfg : waitpid error");
 	}else{
 		addjob(jobs,pid,BG,cmdline);
+		sigprocmask(SIG_UNBLOCK,&mask,NULL);
 		printf("(%d) (%d) %s", pid2jid(pid), pid, cmdline);
-	}
+		}
 	}
 	return;
 }
@@ -228,6 +239,17 @@ void waitfg(pid_t pid, int output_fd)
  */
 void sigchld_handler(int sig) 
 {
+	int status;
+	pid_t pid;
+	while((pid=waitpid(-1,&status,WNOHANG|WUNTRACED))>0){
+		if(WIFSIGNALED(status)){
+			printf("Job [%d] (%d) terminated by signal %d\n", pid2jid(pid),pid,WTERMSIG(status));
+			deletejob(jobs,pid);
+		}
+		else if(WIFEXITED(status)){
+			deletejob(jobs,pid);
+		}
+	}
 	return;
 }
 
@@ -238,6 +260,10 @@ void sigchld_handler(int sig)
  */
 void sigint_handler(int sig) 
 {
+	pid_t pid;
+	if((pid=fgpid(jobs))>0){
+		kill(pid,SIGINT);
+	}
 	return;
 }
 
