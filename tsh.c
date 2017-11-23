@@ -169,7 +169,6 @@ int main(int argc, char **argv)
 void eval(char *cmdline) 
 {
 	char *argv[MAXARGS];		//command 저장	
-	char buf[MAXLINE];
 	pid_t pid;	//프로세스 ID
 	int bg;	//BG인지 확인하는 변수
 
@@ -177,8 +176,9 @@ void eval(char *cmdline)
 	sigset_t mask;	//시그널의 집합
 
 	sigemptyset(&mask);	//시그널의 집합 생성
-	sigaddset(&mask,SIGINT);
-	sigaddset(&mask,SIGCHLD);
+	sigaddset(&mask,SIGINT);	//SIGINT 그룹 추가
+	sigaddset(&mask,SIGCHLD);	//SIGCHLD 그룹 추가
+	sigaddset(&mask,SIGTSTP);	//SIGSTSP 그룹 추가
 	sigprocmask(SIG_BLOCK,&mask,NULL);
 
 	if(!builtin_cmd(argv)){
@@ -215,7 +215,7 @@ int builtin_cmd(char **argv)
 		exit(0);
 	}
 	if(!strcmp(cmd,"jobs")){	//jobs command
-		listjobs(jobs,STDOUT_FILENO);
+		listjobs(jobs,1);
 		return 1;
 	}
 	return 0;
@@ -240,14 +240,18 @@ void waitfg(pid_t pid, int output_fd)
 void sigchld_handler(int sig) 
 {
 	int status;
-	pid_t pid;
+	pid_t pid,jid;
 	while((pid=waitpid(-1,&status,WNOHANG|WUNTRACED))>0){
-		if(WIFSIGNALED(status)){
-			printf("Job [%d] (%d) terminated by signal %d\n", pid2jid(pid),pid,WTERMSIG(status));
+		if(WIFSIGNALED(status)){	//signal에 의해서 종료된 경우
+			jid=pid2jid(pid);
+			printf("Job [%d] (%d) terminated by signal %d\n",jid,pid,WTERMSIG(status));
 			deletejob(jobs,pid);
 		}
-		else if(WIFEXITED(status)){
+		else if(WIFEXITED(status)){	//정상적으로 종료된 경우
 			deletejob(jobs,pid);
+		}else if(WIFSTOPPED(status)){	//정지 signal을 받은 경우
+			getjobpid(jobs,pid)->state = ST;
+			printf("Job [%d] (%d) stopped by signal %d\n",jid,pid,WSTOPSIG(status));
 		}
 	}
 	return;
@@ -274,6 +278,11 @@ void sigint_handler(int sig)
  */
 void sigtstp_handler(int sig) 
 {
+	pid_t pid;
+	pid=fgpid(jobs);
+	if(pid>0){	//foreGround에서 실행시
+		kill(pid,sig);
+	}
 	return;
 }
 
