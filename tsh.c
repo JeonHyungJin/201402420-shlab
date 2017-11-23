@@ -193,7 +193,7 @@ void eval(char *cmdline)
 	
 
 	if(!bg){
-		int status;
+	//	int status;
 		addjob(jobs,pid,FG,cmdline);	//작업리스트 추가
 		sigprocmask(SIG_UNBLOCK,&mask,NULL);
 		waitfg(pid,1);	//실행되는 job기다림
@@ -245,14 +245,17 @@ void sigchld_handler(int sig)
 	while((pid=waitpid(-1,&status,WNOHANG|WUNTRACED))>0){
 		if(WIFSIGNALED(status)){	//signal에 의해서 종료된 경우
 			jid=pid2jid(pid);
-			printf("Job [%d] (%d) terminated by signal %d\n",jid,pid,WTERMSIG(status));
+			printf("Job [%d] (%d) terminated by signal %d\n",pid2jid(pid),pid,WTERMSIG(status));
 			deletejob(jobs,pid);
 		}
 		else if(WIFEXITED(status)){	//정상적으로 종료된 경우
 			deletejob(jobs,pid);
-		}else if(WIFSTOPPED(status)){	//정지 signal을 받은 경우
-			getjobpid(jobs,pid)->state = ST;
-			printf("Job [%d] (%d) stopped by signal %d\n",jid,pid,WSTOPSIG(status));
+		}
+		else if(WIFSTOPPED(status)){	//정지 signal을 받은 경우
+			
+			struct job_t *temp=getjobpid(jobs,pid);
+			temp -> state=ST;
+			printf("Job [%d] (%d) stopped by signal %d\n",pid2jid(pid),pid,WSTOPSIG(status));
 		}
 	}
 	return;
