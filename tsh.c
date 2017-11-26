@@ -222,7 +222,7 @@ int builtin_cmd(char **argv)
 		pid_t jid;
 		struct job_t *t;
 		jid = atoi(&argv[1][1]);
-		t-getjobjid(jobs,jid);
+		t=getjobjid(jobs,jid);
 		kill((t->pid),SIGCONT);
 		t->state = BG;
 		printf("[%d] (%d) %s",jid, t->pid, t->cmdline);
