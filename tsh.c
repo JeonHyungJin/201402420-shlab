@@ -176,8 +176,8 @@ void eval(char *cmdline)
 	sigset_t mask;	//시그널의 집합
 
 	sigemptyset(&mask);	//시그널의 집합 생성
-	sigaddset(&mask,SIGINT);	//SIGINT 그룹 추가
 	sigaddset(&mask,SIGCHLD);	//SIGCHLD 그룹 추가
+	sigaddset(&mask,SIGINT);	//SIGINT 그룹 추가
 	sigaddset(&mask,SIGTSTP);	//SIGSTSP 그룹 추가
 	sigprocmask(SIG_BLOCK,&mask,NULL);
 
@@ -218,11 +218,30 @@ int builtin_cmd(char **argv)
 		listjobs(jobs,1);
 		return 1;
 	}
+/*	if(!strcmp(argv[0],"bg")){
+		commandBG(argv);
+		return 1;
+	}*/
 	return 0;
 }
 
 void waitfg(pid_t pid, int output_fd)
 {
+	struct job_t *j = getjobpid(jobs,pid);
+	char buf[MAXLINE];
+
+	if(!j)
+		return;
+	while(j->pid==pid&&j->state==FG)
+		sleep(1);
+	if(verbose){
+		memset(buf,'\0',MAXLINE);
+		sprintf(buf, "waitfg:Process(%d) no longer the fg process:q\n",pid);
+		if(write(output_fd,buf,strlen(buf))<0){
+			fprintf(stderr, "Error writing to file\n");
+			exit(1);
+		}
+	}
 	return;
 }
 
@@ -240,10 +259,11 @@ void waitfg(pid_t pid, int output_fd)
 void sigchld_handler(int sig) 
 {
 	int status;
-	pid_t pid,jid;
+	pid_t pid;
+	/*WNOHANG 자식프로세스 0이면 끝
+	 WUNTRACED 자식이 있으면 모두 종료 기다림*/
 	while((pid=waitpid(-1,&status,WNOHANG|WUNTRACED))>0){
 		if(WIFSIGNALED(status)){	//signal에 의해서 종료된 경우
-			jid=pid2jid(pid);
 			printf("Job [%d] (%d) terminated by signal %d\n",pid2jid(pid),pid,WTERMSIG(status));
 			deletejob(jobs,pid);
 		}
