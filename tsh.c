@@ -218,10 +218,16 @@ int builtin_cmd(char **argv)
 		listjobs(jobs,1);
 		return 1;
 	}
-/*	if(!strcmp(argv[0],"bg")){
-		commandBG(argv);
+	if(!strcmp(argv[0],"bg")){
+		pid_t jid;
+		struct job_t *t;
+		jid = atoi(&argv[1][1]);
+		t-getjobjid(jobs,jid);
+		kill((t->pid),SIGCONT);
+		t->state = BG;
+		printf("[%d] (%d) %s",jid, t->pid, t->cmdline);
 		return 1;
-	}*/
+	}
 	return 0;
 }
 
