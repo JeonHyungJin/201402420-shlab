@@ -228,6 +228,15 @@ int builtin_cmd(char **argv)
 		printf("[%d] (%d) %s",jid, t->pid, t->cmdline);
 		return 1;
 	}
+	if(!strcmp(argv[0],"fg")){
+		pid_t jid;
+		struct job_t *t;
+		jid = atoi(&argv[1][1]);
+		t=getjobjid(jobs,jid);
+		kill(-(t->pid),SIGCONT);
+		t->state=FG;
+		return 1;
+	}
 	return 0;
 }
 
