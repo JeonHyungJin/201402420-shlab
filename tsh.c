@@ -320,7 +320,7 @@ void sigtstp_handler(int sig)
 	pid_t pid;
 	pid=fgpid(jobs);
 	if(pid>0){	//foreGround에서 실행시
-		kill(pid,sig);
+		kill(-pid,sig);
 	}
 	return;
 }
