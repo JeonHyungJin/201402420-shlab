@@ -183,7 +183,8 @@ void eval(char *cmdline)
 
 	if(!builtin_cmd(argv)){
 		if((pid=fork())==0){	//child process 인 경우 execve()실행
-			sigprocmask(SIG_UNBLOCK,&mask,NULL);
+			sigprocmask(SIG_UNBLOCK,&mask,NULL);	//자식 새성후 block해제
+			setpgid(0,0);	//pid를 그룹으로 만들고 그룹id설정
 			if((execve(argv[0],argv,environ)<0)){
 				printf("%s : Command not found\n", argv[0]);
 				exit(0);
@@ -304,7 +305,7 @@ void sigint_handler(int sig)
 {
 	pid_t pid;
 	if((pid=fgpid(jobs))>0){
-		kill(pid,SIGINT);
+		kill(-pid,sig);
 	}
 	return;
 }
